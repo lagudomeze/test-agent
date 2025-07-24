@@ -53,13 +53,15 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                     .then()
                                     // use current thread for immediate execution
                                     .subscribeOn(Schedulers.immediate())
-                                    // apply timeout to the entire WebSocket session
-                                    // here is another thread that will handle the timeout
+                                    // set timeout to the entire WebSocket session
                                     .timeout(timeout)
-                                    // when timeout occurs, log the error and return an empty Mono
-                                    // todo maybe notify caller?
-                                    .onErrorResume(TimeoutException.class, e -> {
-                                        log.warn("WebSocket connection timed out", e);
+                                    .onErrorResume(e -> {
+                                        if (e instanceof TimeoutException) {
+                                            // todo maybe notify caller timeout?
+                                            log.warn("WebSocket connection timed out", e);
+                                        } else {
+                                            log.error("Error in WebSocket session", e);
+                                        }
                                         return Mono.empty();
                                     });
                         })
