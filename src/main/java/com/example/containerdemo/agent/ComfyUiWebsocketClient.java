@@ -1,5 +1,6 @@
 package com.example.containerdemo.agent;
 
+import com.example.containerdemo.agent.ComfyUiWebsocketClient.ListenEvent.Finished;
 import com.example.containerdemo.agent.ComfyUiWebsocketClient.ListenEvent.Ok;
 import com.example.containerdemo.agent.ComfyUiWebsocketClient.ListenEvent.Timeout;
 import com.example.containerdemo.agent.ComfyUiWebsocketClient.ListenEvent.Unexpected;
@@ -35,7 +36,11 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
         return false;
     }
 
-    public sealed interface ListenEvent permits Ok, Timeout, Unexpected {
+    public sealed interface ListenEvent permits Finished, Ok, Timeout, Unexpected {
+
+        record Finished() implements ListenEvent {
+
+        }
 
         record Ok(ComfyUiEvent event) implements ListenEvent {
 
@@ -70,6 +75,7 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                     .doFinally(signal -> {
                                         log.info("Closing websocket at: {} with signal: {}", uri,
                                                 signal);
+                                        sink.add(new Finished());
                                         session.close().subscribe();
                                     })
                                     .then()
