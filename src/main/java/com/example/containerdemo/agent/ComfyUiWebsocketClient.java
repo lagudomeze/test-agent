@@ -74,9 +74,11 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                     })
                                     .doFinally(signal -> {
                                         sink.add(new Finished());
-                                        log.info("Closing websocket at: {} with signal: {}", uri, signal);
+                                        log.info("Closing websocket at: {} with signal: {}", uri,
+                                                signal);
                                         session.close()
-                                                .doOnError(e -> log.warn("session close error", e))
+                                                .doOnError(e -> log
+                                                        .warn("session close error", e))
                                                 .subscribe();
                                     })
                                     .then()
@@ -86,8 +88,8 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                     .timeout(timeout)
                                     // timeout error handling
                                     .onErrorResume(TimeoutException.class, e -> {
-                                        log.warn("WebSocket session timed out after {}", timeout,
-                                                e);
+                                        log.warn("WebSocket session timed out after {}",
+                                                timeout, e);
                                         sink.add(new Timeout(timeout, e));
                                         return Mono.empty();
                                     })
