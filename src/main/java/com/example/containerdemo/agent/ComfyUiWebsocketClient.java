@@ -36,11 +36,17 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
     }
 
     public sealed interface ListenEvent permits Ok, Timeout, Unexpected {
+
         record Ok(ComfyUiEvent event) implements ListenEvent {
+
         }
+
         record Timeout(Duration duration, TimeoutException exception) implements ListenEvent {
+
         }
+
         record Unexpected(Throwable exception) implements ListenEvent {
+
         }
     }
 
@@ -62,7 +68,8 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                         sink.add(new Ok(event));
                                     })
                                     .doFinally(signal -> {
-                                        log.info("Closing websocket at: {} with signal: {}", uri, signal);
+                                        log.info("Closing websocket at: {} with signal: {}", uri,
+                                                signal);
                                         session.close().subscribe();
                                     })
                                     .then()
@@ -72,7 +79,8 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                     .timeout(timeout)
                                     // timeout error handling
                                     .onErrorResume(TimeoutException.class, e -> {
-                                        log.warn("WebSocket session timed out after {}", timeout, e);
+                                        log.warn("WebSocket session timed out after {}", timeout,
+                                                e);
                                         sink.add(new Timeout(timeout, e));
                                         return Mono.empty();
                                     })
