@@ -49,7 +49,10 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                         log.info("Received event: {}", event);
                                         sink.add(event);
                                     })
-                                    .doOnComplete(() -> session.close().subscribe())
+                                    .doFinally(signal -> {
+                                        log.info("Closing websocket at: {} with signal: {}", uri, signal);
+                                        session.close().subscribe();
+                                    })
                                     .then()
                                     // use current thread for immediate execution
                                     .subscribeOn(Schedulers.immediate())
@@ -86,18 +89,19 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
-                    if (i > 10) {
+                    if (i > 100) {
                         throw new RuntimeException();
                     }
                 })
-                .doOnNext(i -> log.info("Received: {}", i));
+                .doOnNext(i -> log.info("Received: {}", i))
+                .doFinally(signal -> log.info("Closing websocket with signal: {}", signal));
 
         Mono<Void> task = source.takeUntil(i -> i >= 30)
                 .doOnNext(i -> log.info("haha: {}", i))
                 .doOnComplete(() -> log.info("done"))
                 .then();
 
-        task.timeout(Duration.ofSeconds(30))
+        task.timeout(Duration.ofSeconds(10))
                 .onErrorResume(TimeoutException.class, e -> {
                     log.warn("timeout", e);
                     return Mono.empty();
