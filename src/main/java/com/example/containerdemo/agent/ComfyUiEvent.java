@@ -1,4 +1,4 @@
 package com.example.containerdemo.agent;
 
-public record ComfyuiEvent(String type) {
+public record ComfyUiEvent(String type) {
 }

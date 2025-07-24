@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @HttpExchange
-public interface ComfyuiRestClient {
+public interface ComfyUiRestClient {
 
     /// @param promptId 提交的任务id
     /// @param others 其他字段
