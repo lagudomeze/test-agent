@@ -1,5 +1,8 @@
 package com.example.containerdemo.agent;
 
+import com.example.containerdemo.agent.ComfyUiWebsocketClient.ListenEvent.Ok;
+import com.example.containerdemo.agent.ComfyUiWebsocketClient.ListenEvent.Timeout;
+import com.example.containerdemo.agent.ComfyUiWebsocketClient.ListenEvent.Unexpected;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.net.URI;
@@ -32,8 +35,17 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
         return false;
     }
 
-    public ConcurrentLinkedQueue<ComfyUiEvent> listen(String clientId, Duration timeout) {
-        ConcurrentLinkedQueue<ComfyUiEvent> sink = new ConcurrentLinkedQueue<>();
+    public sealed interface ListenEvent permits Ok, Timeout, Unexpected {
+        record Ok(ComfyUiEvent event) implements ListenEvent {
+        }
+        record Timeout(Duration duration, TimeoutException exception) implements ListenEvent {
+        }
+        record Unexpected(Throwable exception) implements ListenEvent {
+        }
+    }
+
+    public ConcurrentLinkedQueue<ListenEvent> listen(String clientId, Duration timeout) {
+        ConcurrentLinkedQueue<ListenEvent> sink = new ConcurrentLinkedQueue<>();
 
         URI uri = baseUri.resolve("ws?clientId=" + clientId);
         Thread.ofVirtual()
@@ -47,7 +59,7 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                     .takeUntil(this::isFinished)
                                     .doOnNext(event -> {
                                         log.info("Received event: {}", event);
-                                        sink.add(event);
+                                        sink.add(new Ok(event));
                                     })
                                     .doFinally(signal -> {
                                         log.info("Closing websocket at: {} with signal: {}", uri, signal);
@@ -61,13 +73,13 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                     // timeout error handling
                                     .onErrorResume(TimeoutException.class, e -> {
                                         log.warn("WebSocket session timed out after {}", timeout, e);
-                                        // todo maybe notify caller timeout?
+                                        sink.add(new Timeout(timeout, e));
                                         return Mono.empty();
                                     })
                                     // other error handling
                                     .onErrorResume(e -> {
-                                        // todo maybe notify caller error?
                                         log.error("Unexpected error", e);
+                                        sink.add(new Unexpected(e));
                                         return Mono.empty();
                                     });
                         })
