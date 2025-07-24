@@ -55,13 +55,16 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                     .subscribeOn(Schedulers.immediate())
                                     // set timeout to the entire WebSocket session
                                     .timeout(timeout)
+                                    // timeout error handling
+                                    .onErrorResume(TimeoutException.class, e -> {
+                                        log.warn("WebSocket session timed out after {}", timeout, e);
+                                        // todo maybe notify caller timeout?
+                                        return Mono.empty();
+                                    })
+                                    // other error handling
                                     .onErrorResume(e -> {
-                                        if (e instanceof TimeoutException) {
-                                            // todo maybe notify caller timeout?
-                                            log.warn("WebSocket connection timed out", e);
-                                        } else {
-                                            log.error("Error in WebSocket session", e);
-                                        }
+                                        // todo maybe notify caller error?
+                                        log.error("Unexpected error", e);
                                         return Mono.empty();
                                     });
                         })
@@ -83,6 +86,9 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
+                    if (i > 10) {
+                        throw new RuntimeException();
+                    }
                 })
                 .doOnNext(i -> log.info("Received: {}", i));
 
@@ -91,10 +97,13 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                 .doOnComplete(() -> log.info("done"))
                 .then();
 
-        task.timeout(Duration.ofSeconds(3))
-                .doOnError(error -> log.warn("error", error))
+        task.timeout(Duration.ofSeconds(30))
                 .onErrorResume(TimeoutException.class, e -> {
                     log.warn("timeout", e);
+                    return Mono.empty();
+                })
+                .onErrorResume(e -> {
+                    log.error("Unexpected error", e);
                     return Mono.empty();
                 })
                 .subscribeOn(Schedulers.immediate())
