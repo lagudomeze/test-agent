@@ -73,10 +73,11 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                         sink.add(new Ok(event));
                                     })
                                     .doFinally(signal -> {
-                                        log.info("Closing websocket at: {} with signal: {}", uri,
-                                                signal);
                                         sink.add(new Finished());
-                                        session.close().subscribe();
+                                        log.info("Closing websocket at: {} with signal: {}", uri, signal);
+                                        session.close()
+                                                .doOnError(e -> log.warn("session close error", e))
+                                                .subscribe();
                                     })
                                     .then()
                                     // use current thread for immediate execution
