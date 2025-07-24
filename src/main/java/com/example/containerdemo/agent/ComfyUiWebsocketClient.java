@@ -73,7 +73,6 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                         sink.add(new Ok(event));
                                     })
                                     .doFinally(signal -> {
-                                        sink.add(new Finished());
                                         log.info("Closing websocket at: {} with signal: {}", uri,
                                                 signal);
                                         session.close()
@@ -98,7 +97,8 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                                         log.error("Unexpected error", e);
                                         sink.add(new Unexpected(e));
                                         return Mono.empty();
-                                    });
+                                    })
+                                    .doOnSuccess(event -> sink.add(new Finished()));
                         })
                         .subscribe()
                 );
