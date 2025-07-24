@@ -52,7 +52,7 @@ public record ComfyUiWebsocketClient(URI baseUri, WebSocketClient client) {
                 .name("comfy-ui-websocket-client#" + clientId)
                 .start(() -> client
                         .execute(uri, session -> {
-                            log.info("Connected to WebSocket at: {}", uri);
+                            log.info("Connected to websocket at: {}", uri);
                             return session
                                     .receive()
                                     .map(ComfyUiWebsocketClient::parse)
